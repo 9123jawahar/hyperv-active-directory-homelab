@@ -15,9 +15,25 @@ The lab serves as a live sandbox for testing **Group Policy Management, Active D
 *   **Security Frameworks:** Windows LAPS (Local Administrator Password Solution), Restricted Group Policy Objects (GPOs)
 
 ---
+[ Physical Host (Wi-Fi Internet Access Connection) ]
+|
+v  (Unshared External Virtual Switch Interface)
+[ pfSense Virtual Appliance ]
+|
++-------------+-------------+  (Isolated LAN Private Network)
+|                           |
+[ Server 2025 - Primary DC ]    [ Server 2022 - Replica DC ]
+• IP: 10.10.10.100              - IP: 10.10.10.200
+• Role: DNS, DHCP, AD DS        - Role: DNS, AD DS Replication
+|
++---------------------------+
+|
+[ Enterprise Workstations ]
+- Client 1, Client 2, Client 3
+- Managed dynamically via centralized DHCP
 
-## 
-🚀 Key Deployment Phases
+
+## 🚀 Key Deployment Phases
 
 
 1. Perimeter Segmentation & Edge Routing
