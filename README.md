@@ -37,6 +37,7 @@ v  (External Virtual Switch Interface)
 - Client 1, Client 2, Client 3
 - Managed dynamically via centralized DHCP
 
+![Hyper-V Environment Infrastructure](images/architectural diagram.png)
 
 ## 🚀 Key Deployment Phases
 
