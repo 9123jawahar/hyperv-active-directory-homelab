@@ -16,8 +16,26 @@ The lab serves as a live sandbox for testing **Group Policy Management, Active D
 
 ---
 
-## 🗺️ Architectural Topology & Network Mapping
+## 
+🚀 Key Deployment Phases
 
-To maximize host resource efficiency (**16GB RAM constraints**), the entire lab utilizes **Hyper-V Dynamic Memory management** across an completely isolated Virtual Switch fabric (`vEthernet AD-lab-switch`).
+
+1. Perimeter Segmentation & Edge Routing
+
+• Configured a dedicated pfSense virtual appliance to serve as the secure edge gateway.
+• Implemented an unshared External Virtual Switch bound directly to the physical Wi-Fi hardware to isolate host OS network traffic from the lab infrastructure.
+• Established a private virtual switch fabric (Lab-LAN) to completely hide the Active Directory environment behind the pfSense routing layer.
+
+2. Identity Infrastructure & Directory Design
+
+• Provisioned a forest root domain (adlab.local) on a primary Windows Server 2025 instance.
+• Structured a standardized Active Directory schema utilizing dedicated Organizational Units (OUs) separating Lab-Workstations from core directory security groups.
+• Deployed a Windows Server 2022 instance as a secondary Domain Controller, configuring Active Directory Replication Topologies and validating cross-server schema health checks.
+
+3. Automated Configuration Services (DHCP & Reverse Lookup DNS)
+
+• De-conflicted edge routing by migrating default scopes to a centralized DHCP server on the Domain Controller (10.10.10.100).
+• Configured DHCP Scope Option 006 to enforce the centralized Primary Domain Controller as the sole authoritative DNS authority for clients.
+• Constructed corresponding DNS Reverse Lookup Zones (PTR records) to validate bidirectional host resolution, essential for stable domain controller sync states.
 
 Initial commit: Home lab documentation
