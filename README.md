@@ -20,6 +20,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
   - [3. DHCP, DNS & Failover](#3-dhcp-dns--failover)
   - [4. OU Design & Group Policy](#4-ou-design--group-policy)
   - [5. Print Server & GPO Printer Deployment](#5-print-server--gpo-printer-deployment)
+  - [6. PowerShell Automation for AD](#6-powershell-automation-for-ad)
 - [Skills Demonstrated](#-skills-demonstrated)
 - [Repository Structure](#-repository-structure)
 
@@ -171,6 +172,24 @@ Configured `AD-server2` (Windows Server 2025) as a **print server** and delivere
 |---|---|
 | ![Drivers x64 and x86](images/print-server/09-drivers-x64-and-x86.png) | ![GPO linked and client result](images/print-server/20-gpo-linked-accounting-ou-client-result.png) |
 
+### 6. PowerShell Automation for AD
+
+Automated the everyday user-lifecycle tasks with the **ActiveDirectory PowerShell module** in PowerShell ISE, and verified every change in ADUC:
+
+- **Create users** — interactively (`Read-Host -AsSecureString`) and **in bulk from CSV** (`Import-Csv | New-ADUser`), with a `FirstName + LastInitial` naming convention and UPN `user@adlab.local`.
+- **Passwords** — single reset with *change password at next logon*; **bulk reset + unlock** from CSV.
+- **OU management** — moved users from `Temp Users` to `USA › Users` with `Move-ADObject`.
+- **Groups** — added/removed members of `Account_User` with `Add-ADGroupMember` / `Remove-ADGroupMember`.
+- **Security hygiene** — disabled inactive accounts based on `LastLogonDate`, checked with an ADUC saved query.
+- **Reporting** — exported OU and domain-wide user reports to CSV.
+- Diagnosed a real AD error: **duplicate UPN** when two users produced the same logon name.
+
+➡️ **Walkthrough with 12 screenshots: [docs/powershell-ad-automation.md](docs/powershell-ad-automation.md)** · **Scripts: [scripts/](scripts/)**
+
+| | |
+|---|---|
+| ![Bulk create from CSV](images/powershell/03-bulk-create-users-csv.png) | ![Move users to OU](images/powershell/07-move-users-after.png) |
+
 ---
 
 ## 💡 Skills Demonstrated
@@ -183,6 +202,7 @@ Configured `AD-server2` (Windows Server 2025) as a **print server** and delivere
 | **DNS** | AD-integrated zones, reverse lookup zones / PTR records |
 | **DHCP** | Scopes, scope options (003/006), DHCP failover in load-balance mode with authentication |
 | **Group Policy** | OU design, GPO creation/linking, security & user-environment policies, Group Policy Preferences |
+| **PowerShell** | ActiveDirectory module, CSV-driven bulk operations, pipelines, SecureString handling, reporting with Export-Csv |
 | **Print Services** | Print Management, TCP/IP ports, multi-architecture drivers, AD-published printers, GPO printer deployment |
 | **Troubleshooting** | Client ↔ server validation, UNC connectivity, following print jobs through the spooler |
 
@@ -194,11 +214,13 @@ Configured `AD-server2` (Windows Server 2025) as a **print server** and delivere
 .
 ├── README.md                          ← this overview
 ├── docs/
-│   └── print-server-deployment.md     ← print server lab walkthrough
-├── images/
-│   ├── infrastructure/                ← Hyper-V, pfSense, AD DS, DHCP screenshots
-│   └── print-server/                  ← 26 print server / GPO screenshots (in order)
-└── scripts.ps1
+│   ├── print-server-deployment.md     ← print server lab walkthrough
+│   └── powershell-ad-automation.md    ← PowerShell AD automation walkthrough
+├── scripts/                           ← 10 PowerShell scripts + sample CSVs
+└── images/
+    ├── infrastructure/                ← Hyper-V, pfSense, AD DS, DHCP screenshots
+    ├── print-server/                  ← 26 print server / GPO screenshots (in order)
+    └── powershell/                    ← 12 PowerShell lab screenshots (in order)
 ```
 
 ---

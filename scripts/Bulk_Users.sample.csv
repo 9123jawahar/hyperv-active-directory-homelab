@@ -1,0 +1,7 @@
+FirstName,LastName,OU,Password
+Meer,Ali,"OU=Temp Users,OU=USA,DC=adlab,DC=local",<password>
+Don,Jones,"OU=Temp Users,OU=USA,DC=adlab,DC=local",<password>
+Tom,Jerry,"OU=Temp Users,OU=USA,DC=adlab,DC=local",<password>
+Ahmed,N,"OU=Temp Users,OU=USA,DC=adlab,DC=local",<password>
+Talha,N,"OU=Temp Users,OU=USA,DC=adlab,DC=local",<password>
+Echi,N,"OU=Temp Users,OU=USA,DC=adlab,DC=local",<password>
