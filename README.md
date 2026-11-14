@@ -21,6 +21,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
   - [4. OU Design & Group Policy](#4-ou-design--group-policy)
   - [5. Print Server & GPO Printer Deployment](#5-print-server--gpo-printer-deployment)
   - [6. PowerShell Automation for AD](#6-powershell-automation-for-ad)
+  - [7. Local Admin Rights for IT Helpdesk via GPO](#7-local-admin-rights-for-it-helpdesk-via-gpo)
 - [Skills Demonstrated](#-skills-demonstrated)
 - [Repository Structure](#-repository-structure)
 
@@ -190,6 +191,21 @@ Automated the everyday user-lifecycle tasks with the **ActiveDirectory PowerShel
 |---|---|
 | ![Bulk create from CSV](images/powershell/03-bulk-create-users-csv.png) | ![Move users to OU](images/powershell/07-move-users-after.png) |
 
+### 7. Local Admin Rights for IT Helpdesk via GPO
+
+Delegated **local administrator rights on end-user PCs** to the IT helpdesk without making them Domain Admins:
+
+- GPO **`End User PC Local Admin`** linked to the **`USA`** OU.
+- *Computer Configuration › Preferences › Local Users and Groups* → **Administrators (built-in)**, action **Update**, member **`ADLAB\Admin_IT`** added.
+- **Update** keeps the existing members (`Administrator`, `Domain Admins`) and adds the helpdesk group.
+- Verified on `AD2-client2`: `ADLAB\Admin_IT` appears in the local Administrators group after the policy applied. A standard Accounting user is still blocked by restrictions.
+
+➡️ **Walkthrough with screenshots: [docs/gpo-local-admin-rights.md](docs/gpo-local-admin-rights.md)**
+
+| | |
+|---|---|
+| ![GPP local group](images/local-admin-gpo/01-gpp-local-group-admin-it.png) | ![Administrators after](images/local-admin-gpo/06-client-administrators-after.png) |
+
 ---
 
 ## 💡 Skills Demonstrated
@@ -201,7 +217,7 @@ Automated the everyday user-lifecycle tasks with the **ActiveDirectory PowerShel
 | **Active Directory** | Forest/domain creation, functional levels, additional DC promotion, replication, Global Catalog, DSRM |
 | **DNS** | AD-integrated zones, reverse lookup zones / PTR records |
 | **DHCP** | Scopes, scope options (003/006), DHCP failover in load-balance mode with authentication |
-| **Group Policy** | OU design, GPO creation/linking, security & user-environment policies, Group Policy Preferences |
+| **Group Policy** | OU design, GPO creation/linking, security & user-environment policies, Group Policy Preferences (printers, local groups), delegating local admin rights |
 | **PowerShell** | ActiveDirectory module, CSV-driven bulk operations, pipelines, SecureString handling, reporting with Export-Csv |
 | **Print Services** | Print Management, TCP/IP ports, multi-architecture drivers, AD-published printers, GPO printer deployment |
 | **Troubleshooting** | Client ↔ server validation, UNC connectivity, following print jobs through the spooler |
@@ -215,12 +231,14 @@ Automated the everyday user-lifecycle tasks with the **ActiveDirectory PowerShel
 ├── README.md                          ← this overview
 ├── docs/
 │   ├── print-server-deployment.md     ← print server lab walkthrough
-│   └── powershell-ad-automation.md    ← PowerShell AD automation walkthrough
+│   ├── powershell-ad-automation.md    ← PowerShell AD automation walkthrough
+│   └── gpo-local-admin-rights.md      ← local admin delegation via GPO
 ├── scripts/                           ← 10 PowerShell scripts + sample CSVs
 └── images/
     ├── infrastructure/                ← Hyper-V, pfSense, AD DS, DHCP screenshots
     ├── print-server/                  ← 26 print server / GPO screenshots (in order)
-    └── powershell/                    ← 12 PowerShell lab screenshots (in order)
+    ├── powershell/                    ← 12 PowerShell lab screenshots (in order)
+    └── local-admin-gpo/               ← 7 local admin GPO screenshots (in order)
 ```
 
 ---
