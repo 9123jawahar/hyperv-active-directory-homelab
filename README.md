@@ -24,6 +24,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
   - [7. Local Admin Rights for IT Helpdesk via GPO](#7-local-admin-rights-for-it-helpdesk-via-gpo)
   - [8. Troubleshooting AD Replication (DNS + Kerberos)](#8-troubleshooting-ad-replication-dns--kerberos)
   - [9. Internal HTTPS with AD CS & IIS](#9-internal-https-with-ad-cs--iis)
+  - [10. Transferring FSMO Roles](#10-transferring-fsmo-roles)
 - [Skills Demonstrated](#-skills-demonstrated)
 - [Repository Structure](#-repository-structure)
 
@@ -235,6 +236,24 @@ Published an internal **print server status page** at `https://printserver.adlab
 
 ➡️ **Walkthrough: [docs/adcs-iis-https-print-portal.md](docs/adcs-iis-https-print-portal.md)**
 
+### 10. Transferring FSMO Roles
+
+Moved all five **FSMO roles** between the domain controllers and back, using both methods:
+
+- **PowerShell**: `Move-ADDirectoryServerOperationMasterRole -Identity "ad-server2" -OperationMasterRole 0,1,2,3,4` moved all five roles to AD-SERVER2 in one command.
+- **GUI**: moved them back to WIN-BU10AOS09CO role by role:
+  - **Schema Master** in the AD Schema snap-in (`regsvr32 schmmgmt.dll`)
+  - **Domain Naming Master** in AD Domains and Trusts
+  - **RID, PDC and Infrastructure** in ADUC
+  - Before each transfer, the console was pointed at the target DC with *Change Directory Server*.
+- Verified each stage with `netdom query fsmo`.
+
+➡️ **Walkthrough with 11 screenshots: [docs/fsmo-role-transfer.md](docs/fsmo-role-transfer.md)**
+
+| | |
+|---|---|
+| ![PowerShell move](images/fsmo-transfer/01-powershell-move-all-roles-to-ad-server2.png) | ![All roles back](images/fsmo-transfer/11-netdom-all-roles-back.png) |
+
 ---
 
 ## 💡 Skills Demonstrated
@@ -243,7 +262,7 @@ Published an internal **print server status page** at `https://printserver.adlab
 |---|---|
 | **Virtualization** | Hyper-V Gen 2 VMs, External vs Private virtual switches, checkpoints, Enhanced Session |
 | **Networking** | pfSense WAN/LAN design, NAT, subnetting, default gateway, network isolation |
-| **Active Directory** | Forest/domain creation, functional levels, additional DC promotion, replication, Global Catalog, DSRM |
+| **Active Directory** | Forest/domain creation, functional levels, additional DC promotion, replication, Global Catalog, DSRM, FSMO role transfer (PowerShell & GUI) |
 | **DNS** | AD-integrated zones, reverse lookup zones / PTR records |
 | **DHCP** | Scopes, scope options (003/006), DHCP failover in load-balance mode with authentication |
 | **Group Policy** | OU design, GPO creation/linking, security & user-environment policies, Group Policy Preferences (printers, local groups), delegating local admin rights |
@@ -264,14 +283,16 @@ Published an internal **print server status page** at `https://printserver.adlab
 │   ├── powershell-ad-automation.md    ← PowerShell AD automation walkthrough
 │   ├── gpo-local-admin-rights.md      ← local admin delegation via GPO
 │   ├── ad-replication-kerberos-repair.md ← replication / Kerberos troubleshooting
-│   └── adcs-iis-https-print-portal.md ← AD CS + IIS HTTPS site
+│   ├── adcs-iis-https-print-portal.md ← AD CS + IIS HTTPS site
+│   └── fsmo-role-transfer.md          ← FSMO role transfer
 ├── scripts/                           ← 10 PowerShell scripts + sample CSVs
 └── images/
     ├── infrastructure/                ← Hyper-V, pfSense, AD DS, DHCP screenshots
     ├── print-server/                  ← 26 print server / GPO screenshots (in order)
     ├── powershell/                    ← 12 PowerShell lab screenshots (in order)
     ├── local-admin-gpo/               ← 7 local admin GPO screenshots (in order)
-    └── replication-repair/            ← 5 replication troubleshooting screenshots (in order)
+    ├── replication-repair/            ← 5 replication troubleshooting screenshots (in order)
+    └── fsmo-transfer/                 ← 11 FSMO transfer screenshots (in order)
 ```
 
 ---
