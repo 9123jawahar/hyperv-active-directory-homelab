@@ -22,6 +22,8 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
   - [5. Print Server & GPO Printer Deployment](#5-print-server--gpo-printer-deployment)
   - [6. PowerShell Automation for AD](#6-powershell-automation-for-ad)
   - [7. Local Admin Rights for IT Helpdesk via GPO](#7-local-admin-rights-for-it-helpdesk-via-gpo)
+  - [8. Troubleshooting AD Replication (DNS + Kerberos)](#8-troubleshooting-ad-replication-dns--kerberos)
+  - [9. Internal HTTPS with AD CS & IIS](#9-internal-https-with-ad-cs--iis)
 - [Skills Demonstrated](#-skills-demonstrated)
 - [Repository Structure](#-repository-structure)
 
@@ -79,8 +81,8 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
 | VM (Hyper-V) | OS | IP | Role |
 |---|---|---|---|
 | `FW` | pfSense 2.7.2 | WAN DHCP / LAN `10.10.10.254` | Edge firewall, NAT, default gateway |
-| `AD-server1 2022` | Windows Server 2022 | `10.10.10.100` | Forest root DC, DNS, DHCP |
-| `AD-server2 2025` | Windows Server 2025 | `10.10.10.101` | Additional DC, DNS, DHCP failover partner, Print Server |
+| `AD-server1 2022` (host `WIN-BU10AOS09CO`) | Windows Server 2022 | `10.10.10.100` | Forest root DC, all 5 FSMO roles (PDC Emulator), DNS, DHCP |
+| `AD-server2 2025` (host `AD-SERVER2`) | Windows Server 2025 | `10.10.10.101` | Additional DC, DNS, DHCP failover partner, Print Server, AD CS Enterprise Root CA, IIS |
 | `AD-client1` | Windows client | DHCP | Domain workstation |
 | `AD-client2` | Windows client | DHCP | Domain workstation |
 | `AD2-client2` | Windows 11 | DHCP | Domain workstation |
@@ -206,6 +208,33 @@ Delegated **local administrator rights on end-user PCs** to the IT helpdesk with
 |---|---|
 | ![GPP local group](images/local-admin-gpo/01-gpp-local-group-admin-it.png) | ![Administrators after](images/local-admin-gpo/06-client-administrators-after.png) |
 
+### 8. Troubleshooting AD Replication (DNS + Kerberos)
+
+After the forest root DC had been powered off for about 20 days, replication between the two DCs was broken (**5/5 failures, 20-day delta**). I diagnosed and fixed it step by step:
+
+- **Error 8524 (DNS lookup failure)**: the partner DC was offline. Brought it back and verified both DCs with `nslookup`.
+- **"The target principal name is incorrect" (0x80090322 / `KRB_AP_ERR_MODIFIED`)**: the DC machine account passwords were out of sync. Reset them with `netdom resetpwd` (KDC stopped) and purged SYSTEM Kerberos tickets with `klist -li 0x3e7 purge`.
+- **Time source**: moved the DCs from Hyper-V time sync to the AD time hierarchy (`w32tm /syncfromflags:domhier`).
+- **Verified**: `repadmin /syncall /AdeP` ran with no errors, and `repadmin /replsummary` showed **0/5 failures** in both directions.
+
+➡️ **Full troubleshooting walkthrough: [docs/ad-replication-kerberos-repair.md](docs/ad-replication-kerberos-repair.md)**
+
+| | |
+|---|---|
+| ![Before – 8524 failures](images/replication-repair/01-dcdiag-replsummary-8524-failures.png) | ![After – healthy replication](images/replication-repair/05-syncall-replsummary-healthy.png) |
+| *Before: 100% failures, 20-day delta* | *After: 0 failures* |
+
+### 9. Internal HTTPS with AD CS & IIS
+
+Published an internal **print server status page** at `https://printserver.adlab.local`, secured with a certificate from the domain's own CA:
+
+- Installed **AD CS (Enterprise Root CA)**, because public CAs cannot issue certificates for `.local` names.
+- Created a CSR in IIS and submitted it through **`/certsrv`** Web Enrollment using the **Web Server** template. Along the way I resolved an HTTP 403.4 (SSL required), a certificate name mismatch, and a duplicate 443 binding.
+- Added a DNS **A record** `printserver → 10.10.10.101` and deployed an HTML/JS page that checks printer `10.10.10.103`.
+- Added an HTTPS binding with **SNI**, and noted that browsers require a **SAN** in the certificate (`certreq` with an `.inf` file).
+
+➡️ **Walkthrough: [docs/adcs-iis-https-print-portal.md](docs/adcs-iis-https-print-portal.md)**
+
 ---
 
 ## 💡 Skills Demonstrated
@@ -220,7 +249,8 @@ Delegated **local administrator rights on end-user PCs** to the IT helpdesk with
 | **Group Policy** | OU design, GPO creation/linking, security & user-environment policies, Group Policy Preferences (printers, local groups), delegating local admin rights |
 | **PowerShell** | ActiveDirectory module, CSV-driven bulk operations, pipelines, SecureString handling, reporting with Export-Csv |
 | **Print Services** | Print Management, TCP/IP ports, multi-architecture drivers, AD-published printers, GPO printer deployment |
-| **Troubleshooting** | Client ↔ server validation, UNC connectivity, following print jobs through the spooler |
+| **PKI & Web** | AD CS Enterprise CA, CSRs, Web Enrollment, certificate templates, IIS HTTPS bindings, SNI, SAN |
+| **Troubleshooting** | Client ↔ server validation, UNC connectivity, following print jobs through the spooler, AD replication (repadmin, dcdiag), Kerberos (KRB_AP_ERR_MODIFIED), netdom resetpwd, w32tm |
 
 ---
 
@@ -232,13 +262,16 @@ Delegated **local administrator rights on end-user PCs** to the IT helpdesk with
 ├── docs/
 │   ├── print-server-deployment.md     ← print server lab walkthrough
 │   ├── powershell-ad-automation.md    ← PowerShell AD automation walkthrough
-│   └── gpo-local-admin-rights.md      ← local admin delegation via GPO
+│   ├── gpo-local-admin-rights.md      ← local admin delegation via GPO
+│   ├── ad-replication-kerberos-repair.md ← replication / Kerberos troubleshooting
+│   └── adcs-iis-https-print-portal.md ← AD CS + IIS HTTPS site
 ├── scripts/                           ← 10 PowerShell scripts + sample CSVs
 └── images/
     ├── infrastructure/                ← Hyper-V, pfSense, AD DS, DHCP screenshots
     ├── print-server/                  ← 26 print server / GPO screenshots (in order)
     ├── powershell/                    ← 12 PowerShell lab screenshots (in order)
-    └── local-admin-gpo/               ← 7 local admin GPO screenshots (in order)
+    ├── local-admin-gpo/               ← 7 local admin GPO screenshots (in order)
+    └── replication-repair/            ← 5 replication troubleshooting screenshots (in order)
 ```
 
 ---
