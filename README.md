@@ -25,6 +25,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
   - [8. Troubleshooting AD Replication (DNS + Kerberos)](#8-troubleshooting-ad-replication-dns--kerberos)
   - [9. Internal HTTPS with AD CS & IIS](#9-internal-https-with-ad-cs--iis)
   - [10. Transferring FSMO Roles](#10-transferring-fsmo-roles)
+  - [11. Remote DC Promotion with PowerShell](#11-remote-dc-promotion-with-powershell)
 - [Skills Demonstrated](#-skills-demonstrated)
 - [Repository Structure](#-repository-structure)
 
@@ -37,7 +38,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
 | **Hypervisor** | Microsoft Hyper-V (Generation 2 VMs) |
 | **Firewall / Router** | pfSense 2.7.2 |
 | **Domain** | `adlab.local` (Forest & Domain functional level: Windows Server 2016) |
-| **Domain Controllers** | Windows Server 2022 + Windows Server 2025 (multi-DC, replicated) |
+| **Domain Controllers** | 3 DCs: Windows Server 2022 + 2 × Windows Server 2025 (multi-DC, replicated) |
 | **Core Services** | AD DS, DNS (forward & reverse zones), DHCP with failover, Print and Document Services |
 | **Clients** | Windows 10/11 Enterprise, domain-joined |
 | **Management** | Server Manager, ADUC, GPMC, DHCP console, Print Management, PowerShell |
@@ -58,14 +59,14 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
      │                         │  LAN  hn1 : 10.10.10.254/24  ← lab gateway
      └────────────┬────────────┘
                   │  Hyper-V Private Switch "Lab-LAN"  10.10.10.0/24
-        ┌─────────┴──────────────────────────┐
-        │                                    │
- ┌──────┴──────────────────┐     ┌───────────┴──────────────────┐
- │ AD-server1 · Server 2022│◄───►│ AD-server2 · Server 2025     │
- │ 10.10.10.100            │ AD  │ 10.10.10.101                 │
- │ AD DS · DNS · DHCP      │ rep │ AD DS · DNS · DHCP (failover)│
- │ Forest root DC          │     │ Print Server                 │
- └──────────┬──────────────┘     └───────────┬──────────────────┘
+        ┌─────────┴──────────────────────────┬──────────────────────────────┐
+        │                                    │                              │
+ ┌──────┴──────────────────┐     ┌───────────┴──────────────────┐  ┌────────┴────────────────┐
+ │ AD-server1 · Server 2022│◄───►│ AD-server2 · Server 2025     │◄►│ AD-server3 · Server 2025│
+ │ 10.10.10.100            │ AD  │ 10.10.10.101                 │  │ 10.10.10.102            │
+ │ AD DS · DNS · DHCP      │ rep │ AD DS · DNS · DHCP (failover)│  │ AD DS · DNS · GC        │
+ │ Forest root DC · FSMO   │     │ Print Server · AD CS · IIS   │  │ Promoted via PowerShell │
+ └──────────┬──────────────┘     └───────────┬──────────────────┘  └─────────────────────────┘
             └───────────────┬────────────────┘
                             │
           ┌─────────────────┼─────────────────┐
@@ -84,6 +85,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
 | `FW` | pfSense 2.7.2 | WAN DHCP / LAN `10.10.10.254` | Edge firewall, NAT, default gateway |
 | `AD-server1 2022` (host `WIN-BU10AOS09CO`) | Windows Server 2022 | `10.10.10.100` | Forest root DC, all 5 FSMO roles (PDC Emulator), DNS, DHCP |
 | `AD-server2 2025` (host `AD-SERVER2`) | Windows Server 2025 | `10.10.10.101` | Additional DC, DNS, DHCP failover partner, Print Server, AD CS Enterprise Root CA, IIS |
+| `AD-server3 2025` (host `AD-server3`) | Windows Server 2025 | `10.10.10.102` | Additional DC, DNS, Global Catalog (promoted remotely with PowerShell) |
 | `AD-client1` | Windows client | DHCP | Domain workstation |
 | `AD-client2` | Windows client | DHCP | Domain workstation |
 | `AD2-client2` | Windows 11 | DHCP | Domain workstation |
@@ -254,6 +256,22 @@ Moved all five **FSMO roles** between the domain controllers and back, using bot
 |---|---|
 | ![PowerShell move](images/fsmo-transfer/01-powershell-move-all-roles-to-ad-server2.png) | ![All roles back](images/fsmo-transfer/11-netdom-all-roles-back.png) |
 
+### 11. Remote DC Promotion with PowerShell
+
+Built a **third domain controller (AD-server3, Windows Server 2025)** entirely from AD-server1 over **PowerShell Remoting**:
+
+- Static IP `10.10.10.102`, with DNS pointing at the existing DCs (`.101` and `.100`).
+- `Enter-PSSession` to the new server. Fixed the **WinRM TrustedHosts** error you get when connecting to a non-domain machine by IP.
+- Installed AD DS remotely with `Install-WindowsFeature`.
+- Promoted it with the **`Install-ADDSDomainController` script exported from the wizard's *View script***: Global Catalog, DNS, `Default-First-Site-Name`.
+- Verified that AD-server3 is a member of `adlab.local` running AD DS and DNS.
+
+➡️ **Walkthrough with screenshots: [docs/remote-dc-promotion-powershell.md](docs/remote-dc-promotion-powershell.md)**
+
+| | |
+|---|---|
+| ![Promotion script over PSSession](images/remote-dc-promotion/02-pssession-trustedhosts-and-promotion-script.png) | ![AD-server3 as DC](images/remote-dc-promotion/05-ad-server3-domain-controller-server-manager.png) |
+
 ---
 
 ## 💡 Skills Demonstrated
@@ -266,7 +284,7 @@ Moved all five **FSMO roles** between the domain controllers and back, using bot
 | **DNS** | AD-integrated zones, reverse lookup zones / PTR records |
 | **DHCP** | Scopes, scope options (003/006), DHCP failover in load-balance mode with authentication |
 | **Group Policy** | OU design, GPO creation/linking, security & user-environment policies, Group Policy Preferences (printers, local groups), delegating local admin rights |
-| **PowerShell** | ActiveDirectory module, CSV-driven bulk operations, pipelines, SecureString handling, reporting with Export-Csv |
+| **PowerShell** | ActiveDirectory module, CSV-driven bulk operations, pipelines, SecureString handling, reporting with Export-Csv, PowerShell Remoting (WinRM, TrustedHosts), Install-ADDSDomainController |
 | **Print Services** | Print Management, TCP/IP ports, multi-architecture drivers, AD-published printers, GPO printer deployment |
 | **PKI & Web** | AD CS Enterprise CA, CSRs, Web Enrollment, certificate templates, IIS HTTPS bindings, SNI, SAN |
 | **Troubleshooting** | Client ↔ server validation, UNC connectivity, following print jobs through the spooler, AD replication (repadmin, dcdiag), Kerberos (KRB_AP_ERR_MODIFIED), netdom resetpwd, w32tm |
@@ -284,7 +302,8 @@ Moved all five **FSMO roles** between the domain controllers and back, using bot
 │   ├── gpo-local-admin-rights.md      ← local admin delegation via GPO
 │   ├── ad-replication-kerberos-repair.md ← replication / Kerberos troubleshooting
 │   ├── adcs-iis-https-print-portal.md ← AD CS + IIS HTTPS site
-│   └── fsmo-role-transfer.md          ← FSMO role transfer
+│   ├── fsmo-role-transfer.md          ← FSMO role transfer
+│   └── remote-dc-promotion-powershell.md ← third DC promoted over PowerShell Remoting
 ├── scripts/                           ← 10 PowerShell scripts + sample CSVs
 └── images/
     ├── infrastructure/                ← Hyper-V, pfSense, AD DS, DHCP screenshots
@@ -292,7 +311,8 @@ Moved all five **FSMO roles** between the domain controllers and back, using bot
     ├── powershell/                    ← 12 PowerShell lab screenshots (in order)
     ├── local-admin-gpo/               ← 7 local admin GPO screenshots (in order)
     ├── replication-repair/            ← 5 replication troubleshooting screenshots (in order)
-    └── fsmo-transfer/                 ← 11 FSMO transfer screenshots (in order)
+    ├── fsmo-transfer/                 ← 11 FSMO transfer screenshots (in order)
+    └── remote-dc-promotion/           ← 5 remote DC promotion screenshots (in order)
 ```
 
 ---
