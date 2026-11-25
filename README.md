@@ -26,6 +26,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
   - [9. Internal HTTPS with AD CS & IIS](#9-internal-https-with-ad-cs--iis)
   - [10. Transferring FSMO Roles](#10-transferring-fsmo-roles)
   - [11. Remote DC Promotion with PowerShell](#11-remote-dc-promotion-with-powershell)
+  - [12. Hybrid Identity with Microsoft Entra Connect Sync](#12-hybrid-identity-with-microsoft-entra-connect-sync)
 - [Skills Demonstrated](#-skills-demonstrated)
 - [Repository Structure](#-repository-structure)
 
@@ -85,7 +86,7 @@ A self-built, isolated corporate network running on a single Hyper-V host — us
 | `FW` | pfSense 2.7.2 | WAN DHCP / LAN `10.10.10.254` | Edge firewall, NAT, default gateway |
 | `AD-server1 2022` (host `WIN-BU10AOS09CO`) | Windows Server 2022 | `10.10.10.100` | Forest root DC, all 5 FSMO roles (PDC Emulator), DNS, DHCP |
 | `AD-server2 2025` (host `AD-SERVER2`) | Windows Server 2025 | `10.10.10.101` | Additional DC, DNS, DHCP failover partner, Print Server, AD CS Enterprise Root CA, IIS |
-| `AD-server3 2025` (host `AD-server3`) | Windows Server 2025 | `10.10.10.102` | Additional DC, DNS, Global Catalog (promoted remotely with PowerShell) |
+| `AD-server3 2025` (host `AD-server3`) | Windows Server 2025 | `10.10.10.102` | Additional DC, DNS, Global Catalog (promoted remotely with PowerShell), Microsoft Entra Connect Sync |
 | `AD-client1` | Windows client | DHCP | Domain workstation |
 | `AD-client2` | Windows client | DHCP | Domain workstation |
 | `AD2-client2` | Windows 11 | DHCP | Domain workstation |
@@ -272,6 +273,22 @@ Built a **third domain controller (AD-server3, Windows Server 2025)** entirely f
 |---|---|
 | ![Promotion script over PSSession](images/remote-dc-promotion/02-pssession-trustedhosts-and-promotion-script.png) | ![AD-server3 as DC](images/remote-dc-promotion/05-ad-server3-domain-controller-server-manager.png) |
 
+### 12. Hybrid Identity with Microsoft Entra Connect Sync
+
+Connected the on-premises domain to **Microsoft Entra ID** (formerly Azure AD), so AD users and groups sync to the cloud automatically:
+
+- **Tenant setup**: created a **Global Administrator** and a separate least-privilege **Hybrid Identity Administrator** (`syncadmin`) to run the sync setup.
+- **UPN preparation**: added the tenant's `onmicrosoft.com` domain as an **alternative UPN suffix** in AD, because `adlab.local` cannot be verified in the cloud.
+- **Entra Connect Sync** on AD-server3: **Password Hash Synchronization**, a wizard-created AD connector account, source anchor **mS-DS-ConsistencyGuid**, syncing all users and devices.
+- **Verified**: 17 users synced on the first run. New AD users Test 2 and Test 4 appeared after the next cycle (19 users). Observed how an unverified `@adlab.local` UPN is replaced with the `onmicrosoft.com` domain in the cloud.
+- **Microsoft Entra ID P1 licensing**: direct assignment, plus **group-based licensing** through the on-premises `Admin_IT` group synced to the cloud.
+
+➡️ **Walkthrough with 20 screenshots: [docs/entra-connect-hybrid-identity.md](docs/entra-connect-hybrid-identity.md)**
+
+| | |
+|---|---|
+| ![Password Hash Sync](images/entra-connect/07-user-signin-password-hash-sync.png) | ![Users synced to Entra ID](images/entra-connect/18-entra-users-synced-19.png) |
+
 ---
 
 ## 💡 Skills Demonstrated
@@ -287,6 +304,7 @@ Built a **third domain controller (AD-server3, Windows Server 2025)** entirely f
 | **PowerShell** | ActiveDirectory module, CSV-driven bulk operations, pipelines, SecureString handling, reporting with Export-Csv, PowerShell Remoting (WinRM, TrustedHosts), Install-ADDSDomainController |
 | **Print Services** | Print Management, TCP/IP ports, multi-architecture drivers, AD-published printers, GPO printer deployment |
 | **PKI & Web** | AD CS Enterprise CA, CSRs, Web Enrollment, certificate templates, IIS HTTPS bindings, SNI, SAN |
+| **Cloud / Hybrid Identity** | Microsoft Entra ID, Entra Connect Sync, Password Hash Sync, UPN suffixes, source anchor, Entra admin roles, Entra ID P1 group-based licensing, Microsoft 365 admin center |
 | **Troubleshooting** | Client ↔ server validation, UNC connectivity, following print jobs through the spooler, AD replication (repadmin, dcdiag), Kerberos (KRB_AP_ERR_MODIFIED), netdom resetpwd, w32tm |
 
 ---
@@ -303,7 +321,8 @@ Built a **third domain controller (AD-server3, Windows Server 2025)** entirely f
 │   ├── ad-replication-kerberos-repair.md ← replication / Kerberos troubleshooting
 │   ├── adcs-iis-https-print-portal.md ← AD CS + IIS HTTPS site
 │   ├── fsmo-role-transfer.md          ← FSMO role transfer
-│   └── remote-dc-promotion-powershell.md ← third DC promoted over PowerShell Remoting
+│   ├── remote-dc-promotion-powershell.md ← third DC promoted over PowerShell Remoting
+│   └── entra-connect-hybrid-identity.md ← AD → Microsoft Entra ID sync
 ├── scripts/                           ← 10 PowerShell scripts + sample CSVs
 └── images/
     ├── infrastructure/                ← Hyper-V, pfSense, AD DS, DHCP screenshots
@@ -312,7 +331,8 @@ Built a **third domain controller (AD-server3, Windows Server 2025)** entirely f
     ├── local-admin-gpo/               ← 7 local admin GPO screenshots (in order)
     ├── replication-repair/            ← 5 replication troubleshooting screenshots (in order)
     ├── fsmo-transfer/                 ← 11 FSMO transfer screenshots (in order)
-    └── remote-dc-promotion/           ← 5 remote DC promotion screenshots (in order)
+    ├── remote-dc-promotion/           ← 5 remote DC promotion screenshots (in order)
+    └── entra-connect/                 ← 20 Entra Connect screenshots (in order)
 ```
 
 ---
